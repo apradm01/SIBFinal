@@ -1,0 +1,112 @@
+Paso 1: Importar la base de datos (laligadb.csv) (en mi caso usando ubuntu linux es en /var/lib/neo4j/import) 
+Paso 2: Para limpiar la base de datos anterior: 
+MATCH (n)
+DETACH DELETE n;
+Paso 3: Cargamos los datos. Código a continuación.
+
+LOAD CSV WITH HEADERS FROM 'file:///laligadb.csv' AS row
+WITH row LIMIT 1000
+MERGE (j:Jugador {nombre: row.Name })
+ON CREATE SET
+	j.equipo = row.Team,
+	j.posicion = row.Position,
+	j.partidosJugados = toInteger(row.Games_played),
+	j.partidosEnteros = toInteger(row.Full_games_played),
+	j.partidosInicial = toInteger(row.Games_started),
+	j.partidosSustituto = toInteger(row.Games_where_substituted),
+	j.amarilla = toInteger(row.Yellow_Cards),
+	j.rojadirecta = toInteger(row.Red_Cards),
+	j.segundaAmarilla = toInteger(row.Second_Yellows),
+	j.tiros = toInteger(row.Shots),
+	j.goles = toInteger(row.Goals_scored),
+	j.penalti = toInteger(row.Penalties_scored),
+	j.propiapuerta = toInteger(row.Own_goals),
+	j.golesCedidos = toInteger(row.Goals_conceded_while_player_on_pitch),
+	j.tackle = toInteger(row.Tackles),
+	j.tackleSucc = toInteger(row.Successful_tackles),
+	j.inteceptions = toInteger(row.Interceptions),
+	j.recoveries = toInteger(row.Recoveries),
+	j.clearances = toInteger(row.Clearances),
+	j.dribles = toInteger(row.Successful_dribbles);
+	
+usuario de prueba:
+	MERGE (u:Usuario { nombre: 'Alonsez' });
+
+y algunas visitas para probar el recomendador:
+	MATCH (u:Usuario { nombre: 'Alonsez' })
+	MATCH (j:Jugador { nombre: 'A. Remiro' })
+	MERGE (u)-[:VISITA_PERFIL {veces: 13}]->(j);
+
+	MATCH (u:Usuario { nombre: 'Alonsez' })
+	MATCH (j:Jugador { nombre: 'Williams' })
+	MERGE (u)-[:VISITA_PERFIL {veces: 22}]->(j);
+	
+	MATCH (u:Usuario { nombre: 'Alonsez' })
+	MATCH (j:Jugador { nombre: 'Oblak ' })
+	MERGE (u)-[:VISITA_PERFIL {veces: 20}]->(j);
+	
+	MATCH (u:Usuario { nombre: 'Alonsez' })
+	MATCH (j:Jugador { nombre: 'Carrillo' })
+	MERGE (u)-[:VISITA_PERFIL {veces: 20}]->(j);
+	
+	MATCH (u:Usuario { nombre: 'Alonsez' })
+	MATCH (j:Jugador { nombre: 'Ely' })
+	MERGE (u)-[:VISITA_PERFIL {veces: 20}]->(j);
+	
+ahora probamos algunas características para comparar jugadores:
+
+CREATE
+(:Caracteristica {valor: 'Goleador'} ),
+(:Caracteristica {valor: 'Tirador de Penaltis'} ),
+(:Caracteristica {valor: 'Porterazo'} ),
+(:Caracteristica {valor: 'Corta Jugadas'} ),
+(:Caracteristica {valor: 'Regateador'}),
+(:Caracteristica {valor: 'Propenso a tarjetas' }),
+(:Caracteristica {valor: 'Propenso a expulsion' }),
+(:Caracteristica {valor: 'Titular' }),
+(:Caracteristica {valor: 'Sustituto' }),
+(:Caracteristica {valor: 'Regular' })
+;
+
+y asignamos las características
+
+MATCH (j:Jugador), (c:Caracteristica)
+WHERE j.goles > 20 AND c.valor = 'Goleador'
+MERGE (j)-[:TIENE]->(c);
+
+MATCH (j:Jugador), (c:Caracteristica)
+WHERE j.penalti > 2 AND c.valor = 'Tirador de Penaltis'
+MERGE (j)-[:TIENE]->(c);
+
+MATCH (j:Jugador), (c:Caracteristica)
+WHERE j.golesCedidos < 30 AND j.posicion = 'Goalkeeper' AND j.partidosJugados > 10 AND c.valor = 'Porterazo'
+MERGE (j)-[:TIENE]->(c);
+
+MATCH (j:Jugador), (c:Caracteristica)
+WHERE j.tackleSucc > 30 AND j.posicion = 'Defender' AND c.valor = 'Corta Jugadas'
+MERGE (j)-[:TIENE]->(c);
+
+MATCH (j:Jugador), (c:Caracteristica)
+WHERE j.dribles > 30 AND j.posicion = 'Midfielder' AND c.valor = 'Regateador'
+MERGE (j)-[:TIENE]->(c);
+
+MATCH (j:Jugador), (c:Caracteristica)
+WHERE j.amarilla > 8 AND c.valor = 'Propenso a tarjetas'
+MERGE (j)-[:TIENE]->(c);
+
+MATCH (j:Jugador), (c:Caracteristica)
+WHERE j.rojadirecta > 1 AND c.valor = 'Propenso a expulsion'
+MERGE (j)-[:TIENE]->(c);
+
+MATCH (j:Jugador), (c:Caracteristica)
+WHERE j.partidosInicial > 28 AND c.valor = 'Titular'
+MERGE (j)-[:TIENE]->(c);
+
+MATCH (j:Jugador), (c:Caracteristica)
+WHERE j.partidosJugados > 28 AND c.valor = 'Regular'
+MERGE (j)-[:TIENE]->(c);
+
+MATCH (j:Jugador), (c:Caracteristica)
+WHERE j.partidosSustituto > 20 AND c.valor = 'Sustituto'
+MERGE (j)-[:TIENE]->(c);
+
